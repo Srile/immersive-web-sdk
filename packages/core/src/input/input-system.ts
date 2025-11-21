@@ -17,7 +17,7 @@ import { Hovered, Interactable, Pressed } from './state-tags.js';
  *
  * @remarks
  * - Scheduled after player movement so pointers reflect updated transforms.
- * - Maintains a filtered list of interactable Object3D roots when XR visibility is `Visible`.
+ * - Rebuilds the interactable list every frame when in XR mode.
  * - Adds transient `Hovered` / `Pressed` tags so other systems can react declaratively.
  *
  * @category Input
@@ -42,7 +42,6 @@ export class InputSystem extends createSystem(
 ) {
   private intersectables: Object3D[] = [];
   private shouldSetIntersectables = false;
-  private dirty = true;
   private listeners = new WeakMap<
     Object3D,
     {
@@ -55,25 +54,19 @@ export class InputSystem extends createSystem(
   private lastBVHUpdate = new WeakMap<Object3D, number>();
 
   init(): void {
-    // React to XR visibility for enabling scoped intersections
+    // Track XR visibility for scoped intersections (XR mode only)
     this.cleanupFuncs.push(
       this.visibilityState.subscribe((value) => {
-        const nextVisible = value === VisibilityState.Visible;
-        if (this.shouldSetIntersectables !== nextVisible) {
-          this.shouldSetIntersectables = nextVisible;
-          this.dirty = true;
-        }
+        this.shouldSetIntersectables = value === VisibilityState.Visible;
       }),
     );
 
-    // Handle additions/removals of interactables
+    // Setup/cleanup event listeners when entities qualify/disqualify
     this.queries.interactable.subscribe('qualify', (entity) => {
       this.setupEventListeners(entity);
-      this.dirty = true;
     });
     this.queries.interactable.subscribe('disqualify', (entity) => {
       this.cleanupEventListeners(entity);
-      this.dirty = true;
     });
   }
 
@@ -81,21 +74,18 @@ export class InputSystem extends createSystem(
     // Update input sampling first
     this.input.update(this.xrManager, delta, time);
 
-    // Maintain the filtered list of interactables for pointer raycasting
-    if (this.dirty) {
-      this.dirty = false;
+    // Rebuild interactables list every frame in XR mode
+    if (this.shouldSetIntersectables) {
       this.intersectables.length = 0;
-      if (this.shouldSetIntersectables) {
-        for (const entity of this.queries.interactable.entities) {
-          const obj = entity.object3D;
-          if (isDescendantOf(obj, this.scene)) {
-            this.intersectables.push(obj!);
-          }
+      for (const entity of this.queries.interactable.entities) {
+        if (entity.object3D) {
+          this.intersectables.push(entity.object3D);
         }
-        (this.scene as any).interactableDescendants = this.intersectables;
-      } else {
-        (this.scene as any).interactableDescendants = undefined;
       }
+      this.scene.interactableDescendants = this.intersectables;
+    } else {
+      // In 2D mode, clear the reference so pointer-events uses default behavior
+      this.scene.interactableDescendants = undefined;
     }
   }
 
@@ -193,17 +183,4 @@ export class InputSystem extends createSystem(
       entity.removeComponent(Pressed);
     }
   }
-}
-
-function isDescendantOf(
-  object: Object3D | null | undefined,
-  parent: Object3D,
-): boolean {
-  while (object) {
-    if (object === parent) {
-      return true;
-    }
-    object = object.parent as any;
-  }
-  return false;
 }
