@@ -138,10 +138,31 @@ export class SceneUnderstandingSystem extends createSystem(
 
   private matrixBuffer = new Matrix4();
 
+  /** Shared material for all plane visualization meshes */
+  private planeMaterial!: MeshBasicMaterial;
+
+  /** Shared material for all mesh visualization meshes */
+  private meshMaterial!: MeshBasicMaterial;
+
   /** localStorage key for storing the persistent anchor UUID */
   private static readonly ANCHOR_UUID_STORAGE_KEY = 'iwsdk_scene_anchor_uuid';
 
   init(): void {
+    // Create shared materials for performance
+    this.planeMaterial = new MeshBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      wireframe: true,
+      opacity: 0.3,
+    });
+
+    this.meshMaterial = new MeshBasicMaterial({
+      color: 0x3383e6,
+      transparent: true,
+      wireframe: true,
+      opacity: 0.3,
+    });
+
     this.xrManager.addEventListener('sessionstart', async () => {
       this.updateEnabledFeatures(this.xrManager.getSession());
 
@@ -186,21 +207,23 @@ export class SceneUnderstandingSystem extends createSystem(
       this.currentMeshes.clear();
     });
 
-    this.world.createTransformEntity(this.anchoredGroup);
-    this.scene.add(this.anchoredGroup);
+    this.world.createTransformEntity(this.anchoredGroup, {
+      parent: this.world.sceneEntity,
+      persistent: true,
+    });
 
     this.config.showWireFrame.subscribe((value) => {
       this.queries.planeEntities.entities.forEach((planeEntity) => {
         const planeObject = planeEntity.object3D;
         if (planeObject instanceof Mesh) {
-          planeObject.material.visible = value;
+          planeObject.visible = value;
         }
       });
 
       this.queries.meshEntities.entities.forEach((meshEntity) => {
         const meshObject = meshEntity.object3D;
         if (meshObject instanceof Mesh) {
-          meshObject.material.visible = value;
+          meshObject.visible = value;
         }
       });
     });
@@ -292,16 +315,13 @@ export class SceneUnderstandingSystem extends createSystem(
           const height = maxZ - minZ;
 
           const geometry = new BoxGeometry(width, 0.01, height);
-          const material = new MeshBasicMaterial({
-            color: 0xffffff * Math.random(),
-            wireframe: true,
-            visible: this.config.showWireFrame.value,
-          });
 
           if (this.currentPlanes.has(plane) === false) {
-            const mesh = new Mesh(geometry, material);
+            const mesh = new Mesh(geometry, this.planeMaterial);
+            mesh.visible = this.config.showWireFrame.value;
             mesh.position.setFromMatrixPosition(this.matrixBuffer);
             mesh.quaternion.setFromRotationMatrix(this.matrixBuffer);
+            this.scene.add(mesh);
             const planeEntity = this.world.createTransformEntity(mesh);
             planeEntity.addComponent(XRPlane, {
               _plane: plane,
@@ -349,14 +369,11 @@ export class SceneUnderstandingSystem extends createSystem(
             new BufferAttribute(mesh.vertices, 3),
           );
           geometry.setIndex(new BufferAttribute(mesh.indices, 1));
-          const material = new MeshBasicMaterial({
-            color: 0xffffff * Math.random(),
-            wireframe: true,
-            visible: this.config.showWireFrame.value,
-          });
 
           if (this.currentMeshes.has(mesh) === false) {
-            const threeMesh = new Mesh(geometry, material);
+            const threeMesh = new Mesh(geometry, this.meshMaterial);
+            threeMesh.visible = this.config.showWireFrame.value;
+            this.scene.add(threeMesh);
             const meshEntity = this.world.createTransformEntity(threeMesh);
             threeMesh.position.setFromMatrixPosition(this.matrixBuffer);
             threeMesh.quaternion.setFromRotationMatrix(this.matrixBuffer);
@@ -462,9 +479,7 @@ export class SceneUnderstandingSystem extends createSystem(
       }
     } catch (_error) {
       // Restoration failed - clear the invalid UUID and allow new anchor creation
-      localStorage.removeItem(
-        SceneUnderstandingSystem.ANCHOR_UUID_STORAGE_KEY,
-      );
+      localStorage.removeItem(SceneUnderstandingSystem.ANCHOR_UUID_STORAGE_KEY);
       this.anchorRequested = false;
     }
   }

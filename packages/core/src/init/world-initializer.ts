@@ -99,8 +99,8 @@ export type WorldOptions = {
     grabbing?: boolean;
     /** Physics simulation (Havok). @defaultValue false */
     physics?: boolean;
-    /** Scene Understanding (planes/meshes/anchors). @defaultValue false */
-    sceneUnderstanding?: boolean;
+    /** Scene Understanding (planes/meshes/anchors). Boolean or config. @defaultValue false */
+    sceneUnderstanding?: boolean | { showWireFrame?: boolean };
     /** Camera access for video streaming. @defaultValue false */
     camera?: boolean;
     /** Spatial UI systems (PanelUI/ScreenSpace/Follow). Boolean or config. @defaultValue true */
@@ -422,7 +422,10 @@ function registerFeatureSystems(
   const locomotionEnabled = !!locomotion;
   const grabbingEnabled = !!config.features.grabbing;
   const physicsEnabled = !!config.features.physics;
-  const sceneUnderstandingEnabled = !!config.features.sceneUnderstanding;
+  const sceneUnderstanding = config.features.sceneUnderstanding as
+    | boolean
+    | { showWireFrame?: boolean };
+  const sceneUnderstandingEnabled = !!sceneUnderstanding;
   const cameraEnabled = !!config.features.camera;
   const spatialUI = config.features.spatialUI as
     | boolean
@@ -455,11 +458,18 @@ function registerFeatureSystems(
 
   // Scene Understanding updates plane/mesh/anchor debug after input/physics
   if (sceneUnderstandingEnabled) {
+    const sceneOpts =
+      typeof sceneUnderstanding === 'object' && sceneUnderstanding
+        ? { showWireFrame: sceneUnderstanding.showWireFrame }
+        : undefined;
     world
       .registerComponent(XRPlane)
       .registerComponent(XRMesh)
       .registerComponent(XRAnchor)
-      .registerSystem(SceneUnderstandingSystem, { priority: -1 });
+      .registerSystem(SceneUnderstandingSystem, {
+        priority: -1,
+        configData: sceneOpts,
+      });
   }
 
   // Camera system for video streaming
