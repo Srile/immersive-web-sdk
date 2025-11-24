@@ -25,6 +25,7 @@ export class SyncedQuaternion extends Quaternion {
   private __y: number = 0;
   private __z: number = 0;
   private __w: number = 1;
+  private suppressOnChange: boolean = false;
 
   constructor(x = 0, y = 0, z = 0, w = 1) {
     super(x, y, z, w);
@@ -55,6 +56,8 @@ export class SyncedQuaternion extends Quaternion {
         } else {
           this.__x = value;
         }
+        // Always call onChange - the callback will check if it should act
+        (this as any)._onChangeCallback();
       },
       enumerable: true,
       configurable: true,
@@ -73,6 +76,8 @@ export class SyncedQuaternion extends Quaternion {
         } else {
           this.__y = value;
         }
+        // Always call onChange - the callback will check if it should act
+        (this as any)._onChangeCallback();
       },
       enumerable: true,
       configurable: true,
@@ -91,6 +96,8 @@ export class SyncedQuaternion extends Quaternion {
         } else {
           this.__z = value;
         }
+        // Always call onChange - the callback will check if it should act
+        (this as any)._onChangeCallback();
       },
       enumerable: true,
       configurable: true,
@@ -109,6 +116,8 @@ export class SyncedQuaternion extends Quaternion {
         } else {
           this.__w = value;
         }
+        // Always call onChange - the callback will check if it should act
+        (this as any)._onChangeCallback();
       },
       enumerable: true,
       configurable: true,
@@ -124,5 +133,27 @@ export class SyncedQuaternion extends Quaternion {
     this.target = target;
     this.targetOffset = offset;
     return this;
+  }
+
+  /**
+   * Register a callback that will be called when quaternion changes from external sources.
+   * The callback is suppressed when changes originate from rotation to prevent loops.
+   */
+  _onChangeWithSuppression(callback: () => void): void {
+    (this as any)._onChange(() => {
+      if (!this.suppressOnChange) {
+        callback();
+      }
+    });
+  }
+
+  /**
+   * Temporarily suppress onChange callbacks while executing a function.
+   * Used when rotation updates quaternion to prevent circular updates.
+   */
+  _withSuppressedOnChange(fn: () => void): void {
+    this.suppressOnChange = true;
+    fn();
+    this.suppressOnChange = false;
   }
 }

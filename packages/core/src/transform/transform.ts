@@ -13,7 +13,8 @@ import {
   createSystem,
 } from '../ecs/index.js';
 import { LevelTag } from '../level/index.js';
-import { Quaternion, Vector3 } from '../runtime/three.js';
+import { Quaternion, Vector3, Euler } from '../runtime/three.js';
+import { SyncedEuler } from './synced-euler.js';
 import { SyncedQuaternion } from './synced-quaternion.js';
 import { SyncedVector3 } from './synced-vector3.js';
 
@@ -81,8 +82,20 @@ function attachToEntity(entity: Entity): void {
     enumerable: true,
   });
 
+  const syncedQuat = new SyncedQuaternion().setTarget(object3D.quaternionView);
+
   Object.defineProperty(object3D, 'quaternion', {
-    value: new SyncedQuaternion().setTarget(object3D.quaternionView),
+    value: syncedQuat,
+    writable: false,
+    configurable: true,
+    enumerable: true,
+  });
+
+  // Replace rotation with SyncedEuler that stays in sync with the quaternion
+  Object.defineProperty(object3D, 'rotation', {
+    value: new SyncedEuler()
+      .copy(object3D.rotation)
+      .setSyncedQuaternion(syncedQuat),
     writable: false,
     configurable: true,
     enumerable: true,
@@ -132,6 +145,13 @@ function detachFromEntity(entity: Entity): void {
 
   Object.defineProperty(object3D, 'quaternion', {
     value: new Quaternion().copy(object3D.quaternion),
+    writable: false,
+    configurable: true,
+    enumerable: true,
+  });
+
+  Object.defineProperty(object3D, 'rotation', {
+    value: new Euler().copy(object3D.rotation),
     writable: false,
     configurable: true,
     enumerable: true,

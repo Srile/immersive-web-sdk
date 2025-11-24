@@ -13,7 +13,10 @@
     "build": "rollup -c",
     "doc": "typedoc",
     "format": "prettier --write ./src/**/*",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "repository": {
     "type": "git",
@@ -43,5 +46,9 @@
   },
   "engines": {
     "node": ">=20.19.0"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.8",
+    "@vitest/coverage-v8": "^2.1.8"
   }
 }

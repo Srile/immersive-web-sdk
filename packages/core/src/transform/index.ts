@@ -8,3 +8,4 @@
 export * from './transform.js';
 export * from './synced-vector3.js';
 export * from './synced-quaternion.js';
+export * from './synced-euler.js';
