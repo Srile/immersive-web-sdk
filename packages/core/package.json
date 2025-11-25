@@ -32,9 +32,9 @@
   "homepage": "https://github.com/facebook/immersive-web-sdk#readme",
   "dependencies": {
     "@babylonjs/havok": "^1.3.10",
-    "@iwsdk/glxf": "file:./../glxf",
-    "@iwsdk/locomotor": "file:./../locomotor",
-    "@iwsdk/xr-input": "file:./../xr-input",
+    "@iwsdk/glxf": "file:../glxf",
+    "@iwsdk/locomotor": "file:../locomotor",
+    "@iwsdk/xr-input": "file:../xr-input",
     "@pmndrs/handle": "^6.6.16",
     "@pmndrs/pointer-events": "^6.6.22",
     "@pmndrs/uikit": "^1.0.60",
