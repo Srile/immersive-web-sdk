@@ -89,6 +89,8 @@ export type WorldOptions = {
     far?: number;
     /** Generate a default gradient environment and background. @defaultValue true */
     defaultLighting?: boolean;
+    /** Enable stencil buffer. @defaultValue false */
+    stencil?: boolean;
   };
 
   /** Opt‑in feature systems. */
@@ -216,6 +218,7 @@ function extractConfiguration(options: WorldOptions) {
     cameraNear: options.render?.near ?? 0.1,
     cameraFar: options.render?.far ?? 200,
     defaultLighting: options.render?.defaultLighting ?? true,
+    stencil: options.render?.stencil ?? false,
     xr: {
       sessionMode: options.xr?.sessionMode ?? SessionMode.ImmersiveVR,
       referenceSpace:
@@ -253,6 +256,7 @@ function setupRendering(sceneContainer: HTMLDivElement, config: any) {
     alpha: config.xr.sessionMode === SessionMode.ImmersiveAR,
     // @ts-ignore
     multiviewStereo: true,
+    stencil: config.stencil,
   });
   renderer.setPixelRatio(window.devicePixelRatio);
   renderer.setSize(window.innerWidth, window.innerHeight);
@@ -429,7 +433,11 @@ function registerFeatureSystems(
   const cameraEnabled = !!config.features.camera;
   const spatialUI = config.features.spatialUI as
     | boolean
-    | { forwardHtmlEvents?: boolean; kits?: any; preferredColorScheme?: ColorScheme };
+    | {
+        forwardHtmlEvents?: boolean;
+        kits?: any;
+        preferredColorScheme?: ColorScheme;
+      };
   const spatialUIEnabled = !!spatialUI;
 
   if (locomotionEnabled) {
@@ -501,7 +509,9 @@ function registerFeatureSystems(
         configData: {
           ...(forwardHtmlEvents !== undefined ? { forwardHtmlEvents } : {}),
           ...(kitsObj ? { kits: kitsObj } : {}),
-          ...(preferredColorScheme !== undefined ? { preferredColorScheme } : {}),
+          ...(preferredColorScheme !== undefined
+            ? { preferredColorScheme }
+            : {}),
         },
       })
       .registerSystem(ScreenSpaceUISystem)
