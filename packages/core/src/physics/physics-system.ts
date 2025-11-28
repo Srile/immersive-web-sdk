@@ -6,13 +6,12 @@
  */
 
 import {
-  DEFAULT_ANGULAR_DAMPING,
-  DEFAULT_GRAVITY_FACTOR,
-  DEFAULT_LINEAR_DAMPING,
-  PhysicsBody,
-  PhysicsState,
-} from './physicsBody';
-import { PhysicsShape, PhysicsShapeType } from './physicsShape';
+  HavokPhysicsWithBindings,
+  HP_ShapeId,
+  HP_WorldId,
+  MassProperties,
+  MotionType,
+} from '@babylonjs/havok';
 import { createSystem, Entity, ne, Pressed, Types } from '.././index.js';
 import {
   Vector3,
@@ -23,14 +22,15 @@ import {
   Object3D,
 } from '../runtime/three.js';
 import {
-  HavokPhysicsWithBindings,
-  HP_ShapeId,
-  HP_WorldId,
-  MassProperties,
-  MotionType,
-} from '@babylonjs/havok';
-import { detectShapeFromGeometry, generateMergedGeometry } from './utils';
+  DEFAULT_ANGULAR_DAMPING,
+  DEFAULT_GRAVITY_FACTOR,
+  DEFAULT_LINEAR_DAMPING,
+  PhysicsBody,
+  PhysicsState,
+} from './physicsBody';
 import { PhysicsManipulation } from './physicsManipulation';
+import { PhysicsShape, PhysicsShapeType } from './physicsShape';
+import { detectShapeFromGeometry, generateMergedGeometry } from './utils';
 
 /**
  * Manages physics simulation using the Havok physics engine.
@@ -83,6 +83,10 @@ export class PhysicsSystem extends createSystem(
   private scaleBuffer = new Vector3();
   private matrixBuffer = new Matrix4();
 
+  // Fixed timestep physics at 60 FPS
+  private readonly FIXED_TIMESTEP = 1 / 60; // 60 FPS
+  private accumulator = 0;
+
   async init(): Promise<void> {
     const { default: HavokPhysics } = await import('@babylonjs/havok');
     this.havok = await HavokPhysics();
@@ -109,8 +113,14 @@ export class PhysicsSystem extends createSystem(
 
   update(delta: number): void {
     if (this.havok && this.havokWorld) {
-      this.havok.HP_World_SetIdealStepTime(this.havokWorld, delta);
-      this.havok.HP_World_Step(this.havokWorld, delta);
+      // Accumulate frame time
+      this.accumulator += delta;
+
+      while (this.accumulator >= this.FIXED_TIMESTEP) {
+        this.havok.HP_World_Step(this.havokWorld, this.FIXED_TIMESTEP);
+        this.accumulator -= this.FIXED_TIMESTEP;
+      }
+
       this.bodyBuffer = this.havok.HP_World_GetBodyBuffer(this.havokWorld)[1];
     }
 
