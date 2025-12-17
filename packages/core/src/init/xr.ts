@@ -284,10 +284,11 @@ export function launchXR(world: World, options?: Partial<XROptions>) {
   };
 
   if (!world.session) {
-    navigator.xr
+    return navigator.xr
       ?.requestSession?.(sessionMode, sessionOptions)
       .then(onSessionStart);
   } else {
     console.error('XRSession already exists');
+    return world.session;
   }
 }
